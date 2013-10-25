@@ -639,7 +639,9 @@ module Prawn
     private
 
     def merge_template_options(page_options, options)
-      object_id = state.store.import_page(options[:template], options[:template_page] || 1)
+      reader = ::PDF::Reader.new(options[:template])
+      page   = reader.page(options[:template_page] || 1)
+      object_id = state.store.import_page(page)
       page_options.merge!(:object_id => object_id )
     end
 

@@ -138,33 +138,16 @@ module Prawn
       # this isn't done the imported objects will just be removed when the
       # store is compacted.
       #
-      # Imports nothing and returns nil if the requested page number doesn't
-      # exist. page_num is 1 indexed, so 1 indicates the first page.
+      # Expects to be passed a PDF::Reader::Page object
       #
-      def import_page(input, page_num)
+      def import_page(page, *ignore)
         @loaded_objects = {}
-        
-        io = if input.respond_to?(:seek) && input.respond_to?(:read)
-          input
-        elsif File.file?(input.to_s)
-          if File.respond_to?(:binread)
-            StringIO.new(File.binread(input.to_s))
-          else
-            StringIO.new(File.read(input.to_s))
-          end
-        else
-          raise ArgumentError, "input must be an IO-like object or a filename"
-        end
-
-        # unless File.file?(filename)
-        #   raise ArgumentError, "#{filename} does not exist"
-        # end
-
-        hash = PDF::Reader::ObjectHash.new(io)
-        ref  = hash.page_references[page_num - 1]
-
-        ref.nil? ? nil : load_object_graph(hash, ref).identifier
-
+        ignore << :Parent
+        attrs = page.attributes.dup.delete_if { |key, value|
+          ignore.include?(key)
+        }
+        page_dict = load_object_graph(page.objects, attrs)
+        ref(page_dict).identifier
       rescue PDF::Reader::MalformedPDFError, PDF::Reader::InvalidObjectError
         msg = "Error reading template file. If you are sure it's a valid PDF, it may be a bug."
         raise Prawn::Errors::TemplateError, msg
@@ -221,25 +204,28 @@ module Prawn
       # recurse down an object graph from a source PDF, importing all the
       # indirect objects we find.
       #
-      # hash is the PDF::Reader::ObjectHash to extract objects from, object is
+      # ohash is the PDF::Reader::ObjectHash to extract objects from, object is
       # the object to extract.
       #
-      def load_object_graph(hash, object)
+      def load_object_graph(ohash, object)
         @loaded_objects ||= {}
         case object
         when ::Hash then
-          object.each { |key,value| object[key] = load_object_graph(hash, value) }
-          object
+          {}.tap { |hash|
+            object.each do |key, value|
+              hash[key] = load_object_graph(ohash, value)
+            end
+          }
         when Array then
-          object.map { |item| load_object_graph(hash, item)}
+          object.map { |item| load_object_graph(ohash, item)}
         when PDF::Reader::Reference then
           unless @loaded_objects.has_key?(object.id)
             @loaded_objects[object.id] = ref(nil)
-            new_obj = load_object_graph(hash, hash[object])
-          if new_obj.kind_of?(PDF::Reader::Stream)
-            stream_dict = load_object_graph(hash, new_obj.hash)
-            @loaded_objects[object.id].data = stream_dict
-            @loaded_objects[object.id] << new_obj.data
+            new_obj = load_object_graph(ohash, ohash[object])
+            if new_obj.kind_of?(PDF::Reader::Stream)
+              stream_dict = load_object_graph(ohash, new_obj.hash)
+              @loaded_objects[object.id].data = stream_dict
+              @loaded_objects[object.id] << new_obj.data
             else
               @loaded_objects[object.id].data = new_obj
             end

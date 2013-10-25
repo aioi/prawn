@@ -10,6 +10,13 @@ require 'digest/sha1'
 module Prawn
   module Images
     class Image
+      def height_ratio
+        self.scaled_height.to_f / self.height.to_f
+      end
+
+      def width_ratio
+        self.scaled_width.to_f / self.width.to_f
+      end
 
       def calc_image_dimensions(options)
         w = options[:width] || width
@@ -53,6 +60,8 @@ module Prawn
           return :jpg
         elsif top[0, 8].unpack("C*") == [137, 80, 78, 71, 13, 10, 26, 10]
           return :png
+        elsif top[0,5].unpack("C*") == [37, 80, 68, 70, 45]
+          return :pdf
         else
           raise Errors::UnsupportedImageType, "image file is an unrecognised format"
         end

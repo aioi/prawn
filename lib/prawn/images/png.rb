@@ -23,11 +23,14 @@ module Prawn
       attr_reader :interlace_method, :alpha_channel
       attr_accessor :scaled_width, :scaled_height
 
+      alias :width_ratio :scaled_width
+      alias :height_ratio :scaled_height
+
       # Process a new PNG image
       #
       # <tt>data</tt>:: A binary string of PNG data
       #
-      def initialize(data)
+      def initialize(data, options = {})
         data = StringIO.new(data.dup)
 
         data.read(8)  # Skip the default header

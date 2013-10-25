@@ -51,6 +51,15 @@ describe "the image() function" do
     info.height.should == 453
   end
 
+  it "should accept a PDF file" do
+    filename = "#{Prawn::BASEDIR}/data/pdfs/nested_pages.pdf"
+    info     =  @pdf.image(filename)
+
+    info.should.be.kind_of(Prawn::Images::PDF)
+
+    info.height.should == 792.0
+  end
+
   it "should raise an UnsupportedImageType if passed a BMP" do
     filename = "#{Prawn::DATADIR}/images/tru256.bmp"
     lambda { @pdf.image filename, :at => [100,100] }.should.raise(Prawn::Errors::UnsupportedImageType)
