@@ -89,7 +89,9 @@ module Prawn
         image_content = File.binread(file)
       end
       
-      image_sha1 = Digest::SHA1.hexdigest(image_content)
+      digest_content = image_content
+      digest_content += options[:page].to_s if options[:page]
+      image_sha1 = Digest::SHA1.hexdigest(digest_content)
 
       # if this image has already been embedded, just reuse it
       if image_registry[image_sha1]
